@@ -1,5 +1,9 @@
 import './style.css';
 import * as THREE from 'three';
+import { InputManager } from './core/input/InputManager';
+import { PlayerController } from './game/player/PlayerController';
+import { CombatController } from './game/combat/CombatController';
+import { Enemy } from './game/enemies/Enemy';
 
 // =====================================================
 // PRINCE OF HESPERIA - High-end Stylized Sci-Fi
@@ -91,9 +95,27 @@ p2.castShadow = true;
 p2.receiveShadow = true;
 scene.add(p2);
 
-// Temporary Prince placeholder
+// === Game Systems ===
+const input = new InputManager(true); // mobile-first
+
 const prince = createPrinceMesh();
 scene.add(prince);
+
+const player = new PlayerController(prince, input, true);
+
+// We need to create a CombatController (import at top)
+const combat = new CombatController(player, input);
+
+// Enemies for combat testing
+const enemies: any[] = [];
+function spawnTestEnemies() {
+  const e1 = new Enemy(scene, new THREE.Vector3(6, 0, -8));
+  const e2 = new Enemy(scene, new THREE.Vector3(-5, 0, -14));
+  enemies.push(e1, e2);
+}
+spawnTestEnemies();
+
+
 
 // Basic animation loop
 const clock = new THREE.Clock();
@@ -103,24 +125,43 @@ function animate() {
 
   const delta = Math.min(clock.getDelta(), 0.1);
 
-  // Simple forward movement test (WASD will be replaced with proper input later)
-  const speed = 4.0;
-  if ((window as any).keys?.w) prince.position.z -= speed * delta;
-  if ((window as any).keys?.s) prince.position.z += speed * delta;
-  if ((window as any).keys?.a) prince.position.x -= speed * delta;
-  if ((window as any).keys?.d) prince.position.x += speed * delta;
+  input.update();
+  player.update(delta);
+  combat.update(delta);
 
-  // Very basic camera follow (will be replaced with CinematicCamera)
-  camera.position.x = prince.position.x * 0.6;
-  camera.position.z = prince.position.z * 0.6 + 18;
-  camera.lookAt(prince.position.x, 4, prince.position.z);
+  // Update enemies
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i];
+    enemy.update(delta, player, combat);
+
+    if (!enemy.isAlive()) {
+      scene.remove(enemy.mesh);
+      enemies.splice(i, 1);
+    }
+  }
+
+  // Update enemies
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i];
+    enemy.update(delta, player, combat);
+
+    if (!enemy.isAlive()) {
+      scene.remove(enemy.mesh);
+      enemies.splice(i, 1);
+    }
+  }
+
+  // Simple camera follow (will be replaced with proper CinematicCamera)
+  camera.position.x = prince.position.x * 0.55;
+  camera.position.z = prince.position.z * 0.55 + 17;
+  camera.lookAt(prince.position.x, 4.5, prince.position.z);
 
   renderer.render(scene, camera);
 }
 
 animate();
 
-// Keyboard input (temporary for desktop testing)
+// Temporary keyboard for desktop testing
 (window as any).keys = {};
 window.addEventListener('keydown', (e) => ((window as any).keys[e.key.toLowerCase()] = true));
 window.addEventListener('keyup', (e) => ((window as any).keys[e.key.toLowerCase()] = false));
@@ -132,7 +173,14 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-console.log('%c[Prince of Hesperia] Three.js foundation running. Mobile Safari optimized.', 'color:#64748b');
+
+
+// Keyboard input (temporary for desktop testing)
+(window as any).keys = {};
+window.addEventListener('keydown', (e) => ((window as any).keys[e.key.toLowerCase()] = true));
+window.addEventListener('keyup', (e) => ((window as any).keys[e.key.toLowerCase()] = false));
+
+console.log('%c[Prince of Hesperia] Combat testing enabled. WASD to move, F or Space to attack.', 'color:#64748b');
 
 function createPrinceMesh() {
   const group = new THREE.Group();
