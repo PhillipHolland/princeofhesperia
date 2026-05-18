@@ -95,7 +95,7 @@ export class Enemy {
     this.syncMesh();
   }
 
-  private handleChase(player: PlayerController, distance: number, delta: number) {
+  private handleChase(player: PlayerController, distance: number, _delta: number) {
     const direction = player.getPosition().x - this.position.x;
     const dir = Math.sign(direction);
 
