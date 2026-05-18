@@ -1,5 +1,6 @@
 import './style.css';
 import * as THREE from 'three';
+import { CinematicCamera } from './core/camera/CinematicCamera';
 import { InputManager } from './core/input/InputManager';
 import { PlayerController } from './game/player/PlayerController';
 import { CombatController } from './game/combat/CombatController';
@@ -34,10 +35,10 @@ container.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x0a0b0f, 22, 55);
 
-// Cinematic Angled Camera
+// Cinematic 2.5D Camera
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.5, 120);
-camera.position.set(0, 26, 22);
-camera.lookAt(0, 2, 0);
+const cinematicCamera = new CinematicCamera(camera);
+const cinematicCamera = new CinematicCamera(camera);
 
 // Lighting - High-end stylized, cinematic, mobile-friendly
 const hemiLight = new THREE.HemisphereLight(0x5a6a7a, 0x0c0e12, 0.65);
@@ -151,10 +152,8 @@ function animate() {
     }
   }
 
-  // Simple camera follow (will be replaced with proper CinematicCamera)
-  camera.position.x = prince.position.x * 0.55;
-  camera.position.z = prince.position.z * 0.55 + 17;
-  camera.lookAt(prince.position.x, 4.5, prince.position.z);
+  // Cinematic 2.5D Camera
+  cinematicCamera.update(prince.position, delta);
 
   renderer.render(scene, camera);
 }
