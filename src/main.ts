@@ -41,7 +41,7 @@ scene.add(ground)
 
 // Temporary placeholder character (we will replace with proper 2.5D Prince)
 const prince = new THREE.Mesh(
-  new THREE.BoxGeometry(1.2, 2.2, 0.7),
+  new THREE.BoxGeometry(1.4, 2.4, 0.8),
   new THREE.MeshStandardMaterial({ color: 0x3f322a, roughness: 0.5, metalness: 0.3 })
 )
 prince.position.y = 1.1
