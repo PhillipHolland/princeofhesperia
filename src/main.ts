@@ -22,7 +22,7 @@ renderer.shadowMap.enabled = true
 container.appendChild(renderer.domElement)
 
 const scene = new THREE.Scene()
-scene.fog = new THREE.Fog(0x0b0c12, 26, 62)
+scene.fog = new THREE.Fog(0x0b0c12, 22, 58)
 
 // Cinematic 2.5D Camera
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.5, 160)
@@ -55,23 +55,32 @@ const fillLight = new THREE.DirectionalLight(0x8a6f55, 0.35)
 fillLight.position.set(4, -8, 12)
 scene.add(fillLight)
 
-// === ATMOSPHERE ===
+// === ATMOSPHERE (less flat gray, more Mars ruin feel) ===
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(80, 36),
-  new THREE.MeshStandardMaterial({ color: 0x1a1f28, roughness: 0.92, metalness: 0.03 })
+  new THREE.MeshStandardMaterial({ color: 0x232a35, roughness: 0.9, metalness: 0.04 })
 )
 ground.rotation.x = -Math.PI / 2
 ground.receiveShadow = true
 scene.add(ground)
 
-// Dust haze plane (very subtle)
+// Subtle ground variation plane
+const groundDetail = new THREE.Mesh(
+  new THREE.PlaneGeometry(80, 36),
+  new THREE.MeshStandardMaterial({ color: 0x1c222c, roughness: 0.95 })
+)
+groundDetail.rotation.x = -Math.PI / 2
+groundDetail.position.y = 0.03
+scene.add(groundDetail)
+
+// Dust haze (warmer tone)
 const haze = new THREE.Mesh(
   new THREE.PlaneGeometry(90, 42),
   new THREE.MeshStandardMaterial({ 
-    color: 0x2a2520, 
+    color: 0x322a24, 
     roughness: 1, 
     transparent: true, 
-    opacity: 0.28 
+    opacity: 0.32 
   })
 )
 haze.rotation.x = -Math.PI / 2
@@ -100,6 +109,16 @@ platforms.forEach(p => {
 const prince = createPrinceMesh()
 scene.add(prince)
 
+// Expose limbs for animation
+const limbs = prince.userData.limbs as {
+  leftLeg: THREE.Object3D
+  rightLeg: THREE.Object3D
+  leftArm: THREE.Object3D
+  rightArm: THREE.Object3D
+  torso: THREE.Object3D
+  cape: THREE.Object3D
+}
+
 // Systems
 const input = new InputManager(true)
 const player = new PlayerController(prince, input, true)
@@ -120,6 +139,40 @@ function animate() {
   input.update()
   player.update(delta)
   combat.update(delta)
+
+  // === PRINCE ANIMATION (stops the "bouncing block" problem) ===
+  const vel = player.getVelocity()
+  const speed = Math.abs(vel.x)
+  const isMoving = speed > 0.8
+  const walkCycle = Date.now() * 0.008 * Math.max(0.7, Math.min(speed / 6, 1.4))
+
+  if (limbs) {
+    if (isMoving) {
+      // Leg swing (opposite legs)
+      limbs.leftLeg.rotation.x = Math.sin(walkCycle) * 0.85
+      limbs.rightLeg.rotation.x = Math.sin(walkCycle + Math.PI) * 0.85
+
+      // Arm swing (opposite to legs)
+      limbs.leftArm.rotation.x = Math.sin(walkCycle + Math.PI) * 0.7
+      limbs.rightArm.rotation.x = Math.sin(walkCycle) * 0.7
+
+      // Slight torso bob + cape sway
+      limbs.torso.position.y = 1.12 + Math.sin(walkCycle * 2) * 0.025
+      limbs.cape.rotation.x = Math.sin(walkCycle * 0.7) * 0.12
+    } else {
+      // Idle breathing / settle
+      limbs.leftLeg.rotation.x *= 0.82
+      limbs.rightLeg.rotation.x *= 0.82
+      limbs.leftArm.rotation.x *= 0.82
+      limbs.rightArm.rotation.x *= 0.82
+      limbs.torso.position.y = 1.12
+      limbs.cape.rotation.x *= 0.8
+    }
+  }
+
+  // Face movement direction (flip whole prince)
+  if (vel.x > 0.5) prince.scale.x = 1
+  else if (vel.x < -0.5) prince.scale.x = -1
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     const enemy = enemies[i]
@@ -172,7 +225,7 @@ function createPrinceMesh(): THREE.Group {
   chest.castShadow = true
   g.add(chest)
 
-  // Shoulder pauldrons (very important for silhouette)
+  // Shoulder pauldrons
   const leftPaul = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.68, 0.92), darkArmor)
   leftPaul.position.set(-0.82, 1.72, 0)
   g.add(leftPaul)
@@ -181,27 +234,24 @@ function createPrinceMesh(): THREE.Group {
   rightPaul.position.set(0.82, 1.72, 0)
   g.add(rightPaul)
 
-  // Head + helmet (distinctive side view)
+  // Head + helmet
   const helmetBase = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.76, 0.76), head)
   helmetBase.position.y = 2.42
   g.add(helmetBase)
 
-  // Helmet crest / tech ridge (gives instant recognition)
   const crest = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.42, 0.96), copper)
   crest.position.set(0, 2.72, 0)
   g.add(crest)
 
-  // Visor strip (tech, Mars feel)
   const visor = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.18, 0.82), tech)
   visor.position.y = 2.38
   g.add(visor)
 
-  // Neck guard
   const neck = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.28, 0.72), darkArmor)
   neck.position.y = 2.08
   g.add(neck)
 
-  // Arms (layered for depth)
+  // Arms — we will animate these
   const armMat = new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.55 })
   const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.36, 1.22, 0.46), armMat)
   leftArm.position.set(-0.78, 1.18, 0)
@@ -211,7 +261,6 @@ function createPrinceMesh(): THREE.Group {
   rightArm.position.set(0.78, 1.18, 0)
   g.add(rightArm)
 
-  // Forearm guards
   const leftGuard = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.72, 0.54), armor)
   leftGuard.position.set(-0.88, 0.72, 0)
   g.add(leftGuard)
@@ -220,7 +269,7 @@ function createPrinceMesh(): THREE.Group {
   rightGuard.position.set(0.88, 0.72, 0)
   g.add(rightGuard)
 
-  // Legs (strong stance)
+  // Legs — we will animate these (critical for stopping "bouncing block" look)
   const legMat = new THREE.MeshStandardMaterial({ color: 0x25201c, roughness: 0.6 })
   const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.08, 0.52), legMat)
   leftLeg.position.set(-0.34, 0.54, 0)
@@ -230,7 +279,6 @@ function createPrinceMesh(): THREE.Group {
   rightLeg.position.set(0.34, 0.54, 0)
   g.add(rightLeg)
 
-  // Boots
   const boot = new THREE.MeshStandardMaterial({ color: 0x1f1c18, roughness: 0.5, metalness: 0.2 })
   const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.32, 0.62), boot)
   leftBoot.position.set(-0.34, 0.16, 0)
@@ -240,12 +288,12 @@ function createPrinceMesh(): THREE.Group {
   rightBoot.position.set(0.34, 0.16, 0)
   g.add(rightBoot)
 
-  // Cape / cloak element (huge for silhouette and movement feel)
+  // Cape (will sway)
   const cape = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.85, 1.15), darkArmor)
   cape.position.set(-0.62, 1.35, -0.1)
   g.add(cape)
 
-  // Sword (sheathed on back for now - side view reads well)
+  // Sword
   const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.65, 0.14), sword)
   swordBlade.position.set(0.92, 1.35, -0.08)
   g.add(swordBlade)
@@ -254,10 +302,19 @@ function createPrinceMesh(): THREE.Group {
   swordGuard.position.set(0.92, 2.05, -0.08)
   g.add(swordGuard)
 
-  // Small tech details on chest
   const chestDetail = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.14, 0.82), tech)
   chestDetail.position.y = 1.68
   g.add(chestDetail)
+
+  // Store references for animation
+  g.userData.limbs = {
+    leftLeg,
+    rightLeg,
+    leftArm,
+    rightArm,
+    torso,
+    cape,
+  }
 
   return g
 }

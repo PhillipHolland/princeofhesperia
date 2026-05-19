@@ -19,8 +19,9 @@ export class CinematicCamera {
   private camera: THREE.PerspectiveCamera;
   private mode: CameraMode = 'standard';
 
-  // Base side-view offset (we mostly stay on the side)
-  private baseOffset = new THREE.Vector3(0, 8, 18); // (height, vertical, depth/side)
+  // Base side-view offset — tuned for classic Prince of Persia profile view
+  // We want the camera almost purely from the side (strong silhouette), not 3/4 angle
+  private baseOffset = new THREE.Vector3(0, 6.5, 26); // x offset, height, depth (Z)
 
   // Smoothed targets
   private currentPosition = new THREE.Vector3();
@@ -57,10 +58,11 @@ export class CinematicCamera {
 
     this.targetPosition.copy(playerPosition).add(offset);
 
-    // Look slightly ahead and at upper body for better 2.5D framing
+    // Look at upper body for clean side-view profile (classic PoP framing)
     this.targetLookAt.copy(playerPosition);
-    this.targetLookAt.y += 3.5;
-    this.targetLookAt.z += 1.2; // slight look-ahead
+    this.targetLookAt.y += 3.2;
+    // Very little Z look offset — we want to see the character in strong profile, not 3/4
+    this.targetLookAt.z += 0.4;
 
     // Apply hurt shake + slower recovery (feels heavy)
     if (this.hurtIntensity > 0) {
